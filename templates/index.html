@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Expense Tracker{% endblock %}
+
+{% block content %}
+
+<!-- Header + Total -->
+<div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-3">
+  <div>
+    <h1 class="page-title">My Expenses</h1>
+    <p class="page-subtitle">Track where your money goes.</p>
+  </div>
+
+  <!-- Total card -->
+  <div class="card px-4 py-3 text-end" style="min-width:180px;">
+    <div class="page-subtitle" style="font-size:0.78rem;letter-spacing:0.06em;text-transform:uppercase;">Total Spent</div>
+    <div style="font-family:'DM Serif Display',serif; font-size:2rem; letter-spacing:-0.03em; color:var(--accent); line-height:1.1;">
+      ${{ "%.2f"|format(total) }}
+    </div>
+  </div>
+</div>
+
+<!-- Expenses table -->
+{% if expenses %}
+<div class="card" style="overflow:hidden;">
+  <table class="table mb-0" style="border-collapse:collapse;">
+    <thead>
+      <tr style="border-bottom:1px solid var(--border); background:var(--bg);">
+        <th style="padding:0.75rem 1.25rem; font-size:0.75rem; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted); width:38%;">Description</th>
+        <th style="padding:0.75rem 1rem; font-size:0.75rem; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted);">Category</th>
+        <th style="padding:0.75rem 1rem; font-size:0.75rem; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted);">Date</th>
+        <th style="padding:0.75rem 1rem; font-size:0.75rem; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted); text-align:right;">Amount</th>
+        <th style="padding:0.75rem 1.25rem; width:80px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for expense in expenses %}
+      <tr style="border-bottom:1px solid var(--border); transition:background 0.12s;" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+        <td style="padding:0.85rem 1.25rem; font-weight:500;">{{ expense['description'] }}</td>
+        <td style="padding:0.85rem 1rem;">
+          <span class="badge-cat cat-{{ expense['category'] }}">{{ expense['category'] }}</span>
+        </td>
+        <td style="padding:0.85rem 1rem; color:var(--muted); font-size:0.875rem;">{{ expense['date'] }}</td>
+        <td style="padding:0.85rem 1rem; text-align:right; font-weight:600; font-variant-numeric:tabular-nums;">
+          ${{ "%.2f"|format(expense['amount']) }}
+        </td>
+        <td style="padding:0.85rem 1.25rem;">
+          <div class="d-flex gap-1 justify-content-end">
+            <a href="{{ url_for('edit', expense_id=expense['id']) }}" class="btn-ghost-edit" title="Edit">
+              <i class="bi bi-pencil" style="font-size:0.9rem;"></i>
+            </a>
+            <form method="POST" action="{{ url_for('delete', expense_id=expense['id']) }}" style="display:inline;"
+                  onsubmit="return confirm('Delete this expense?')">
+              <button type="submit" class="btn-ghost-delete" title="Delete">
+                <i class="bi bi-trash" style="font-size:0.9rem;"></i>
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% else %}
+<!-- Empty state -->
+<div class="card text-center py-5 px-3" style="border-style:dashed;">
+  <div style="font-size:2.5rem; margin-bottom:0.75rem;">📋</div>
+  <p style="font-weight:500; margin-bottom:0.25rem;">No expenses yet.</p>
+  <p class="page-subtitle" style="margin-bottom:1.5rem;">Add your first expense to start tracking.</p>
+  <div>
+    <a href="{{ url_for('add') }}" class="btn btn-primary px-4">
+      <i class="bi bi-plus-lg me-1"></i>Add Expense
+    </a>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

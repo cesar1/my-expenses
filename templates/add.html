@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Add Expense{% endblock %}
+
+{% block content %}
+
+<div style="max-width:520px;">
+  <a href="{{ url_for('index') }}" class="d-inline-flex align-items-center gap-1 mb-4"
+     style="color:var(--muted); text-decoration:none; font-size:0.875rem; font-weight:500;">
+    <i class="bi bi-arrow-left"></i> Back
+  </a>
+
+  <h1 class="page-title mb-1">New Expense</h1>
+  <p class="page-subtitle mb-4">Fill in the details below.</p>
+
+  {% if error %}
+  <div class="alert alert-danger border-0 mb-4" style="background:var(--accent-lt); color:var(--accent); border-radius:8px;">
+    <i class="bi bi-exclamation-circle me-2"></i>{{ error }}
+  </div>
+  {% endif %}
+
+  <div class="card p-4">
+    <form method="POST" action="{{ url_for('add') }}">
+      <div class="mb-3">
+        <label class="form-label" for="description">Description</label>
+        <input
+          type="text"
+          class="form-control"
+          id="description"
+          name="description"
+          placeholder="e.g. Grocery run, Uber ride…"
+          value="{{ request.form.description or '' }}"
+          required
+          autofocus
+        />
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="amount">Amount ($)</label>
+        <input
+          type="number"
+          class="form-control"
+          id="amount"
+          name="amount"
+          placeholder="0.00"
+          step="0.01"
+          min="0.01"
+          value="{{ request.form.amount or '' }}"
+          required
+        />
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-sm-6">
+          <label class="form-label" for="category">Category</label>
+          <select class="form-select" id="category" name="category" required>
+            <option value="" disabled {% if not request.form.category %}selected{% endif %}>Select…</option>
+            {% for cat in categories %}
+            <option value="{{ cat }}" {% if request.form.category == cat %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-sm-6">
+          <label class="form-label" for="date">Date</label>
+          <input
+            type="date"
+            class="form-control"
+            id="date"
+            name="date"
+            value="{{ request.form.date or '' }}"
+            required
+          />
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary px-4">
+          <i class="bi bi-check-lg me-1"></i>Save Expense
+        </button>
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary px-4">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

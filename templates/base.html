@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Expense Tracker{% endblock %}</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <!-- Google Fonts: DM Serif Display + DM Sans -->
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg:        #F5F2EC;
+      --surface:   #FFFFFF;
+      --border:    #E2DDD4;
+      --text:      #1A1814;
+      --muted:     #8A867E;
+      --accent:    #C84B2F;
+      --accent-lt: #F7EAE6;
+
+      /* category palette */
+      --food:          #2E7D5E;
+      --food-lt:       #E6F4EF;
+      --transport:     #1D5FA8;
+      --transport-lt:  #E6EFF9;
+      --entertainment: #7B3FA0;
+      --entertainment-lt: #F3EBF9;
+      --utilities:     #B07D1A;
+      --utilities-lt:  #FBF4E2;
+      --other:         #5A5A5A;
+      --other-lt:      #EFEFEF;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      min-height: 100vh;
+    }
+
+    /* ── Nav ── */
+    .navbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 0;
+    }
+    .navbar-brand {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.4rem;
+      color: var(--text) !important;
+      letter-spacing: -0.02em;
+    }
+    .navbar-brand span { color: var(--accent); }
+    .nav-link-add {
+      background: var(--accent);
+      color: #fff !important;
+      border-radius: 6px;
+      padding: 0.4rem 1rem !important;
+      font-weight: 500;
+      font-size: 0.875rem;
+      transition: background 0.15s;
+    }
+    .nav-link-add:hover { background: #a83a21; }
+
+    /* ── Page wrapper ── */
+    .page-wrapper {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+
+    /* ── Category badges ── */
+    .badge-cat {
+      display: inline-block;
+      padding: 0.28em 0.7em;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+    .cat-Food            { background: var(--food-lt);          color: var(--food); }
+    .cat-Transport       { background: var(--transport-lt);     color: var(--transport); }
+    .cat-Entertainment   { background: var(--entertainment-lt); color: var(--entertainment); }
+    .cat-Utilities       { background: var(--utilities-lt);     color: var(--utilities); }
+    .cat-Other           { background: var(--other-lt);         color: var(--other); }
+
+    /* ── Form controls ── */
+    .form-label { font-weight: 500; font-size: 0.875rem; color: var(--muted); margin-bottom: 0.3rem; }
+    .form-control, .form-select {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.925rem;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(200,75,47,0.12);
+      background: var(--surface);
+    }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      border-radius: 8px;
+      font-weight: 500;
+    }
+    .btn-primary:hover { background: #a83a21; border-color: #a83a21; }
+    .btn-outline-secondary {
+      border-color: var(--border);
+      color: var(--muted);
+      border-radius: 8px;
+    }
+    .btn-outline-secondary:hover { background: var(--bg); color: var(--text); border-color: var(--text); }
+    .btn-ghost-edit {
+      background: none; border: none; color: var(--muted);
+      padding: 0.25rem 0.5rem; border-radius: 6px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .btn-ghost-edit:hover { color: var(--transport); background: var(--transport-lt); }
+    .btn-ghost-delete {
+      background: none; border: none; color: var(--muted);
+      padding: 0.25rem 0.5rem; border-radius: 6px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .btn-ghost-delete:hover { color: var(--accent); background: var(--accent-lt); }
+
+    /* ── Page headings ── */
+    .page-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.75rem;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.25rem;
+    }
+    .page-subtitle { color: var(--muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar navbar-expand-sm">
+    <div class="container" style="max-width:860px;">
+      <a class="navbar-brand" href="{{ url_for('index') }}">
+        Expense<span>.</span>
+      </a>
+      <a class="nav-link nav-link-add" href="{{ url_for('add') }}">
+        <i class="bi bi-plus-lg me-1"></i>Add Expense
+      </a>
+    </div>
+  </nav>
+
+  <div class="page-wrapper">
+    {% block content %}{% endblock %}
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
