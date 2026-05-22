@@ -8,6 +8,7 @@
 #
 # Then open: http://127.0.0.1:5000
 
+from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
 import os
@@ -35,7 +36,33 @@ def init_db():
                 date      TEXT NOT NULL
             )
         """)
-        conn.commit()
+
+
+def validate_expense_form(form):
+    description = form.get("description", "").strip()
+    amount_raw = form.get("amount", "").strip()
+    category = form.get("category", "").strip()
+    date = form.get("date", "").strip()
+
+    if not description or not amount_raw or not category or not date:
+        return None, "All fields are required."
+
+    try:
+        amount = float(amount_raw)
+        if amount <= 0:
+            raise ValueError
+    except ValueError:
+        return None, "Amount must be a positive number."
+
+    if category not in CATEGORIES:
+        return None, "Invalid category."
+
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        return None, "Date must be in YYYY-MM-DD format."
+
+    return {"description": description, "amount": amount, "category": category, "date": date}, None
 
 
 @app.route("/")
@@ -51,20 +78,15 @@ def index():
 @app.route("/add", methods=["GET", "POST"])
 def add():
     if request.method == "POST":
-        description = request.form["description"].strip()
-        amount = request.form["amount"]
-        category = request.form["category"]
-        date = request.form["date"]
-
-        if not description or not amount or not category or not date:
-            return render_template("add.html", categories=CATEGORIES, error="All fields are required.")
+        data, error = validate_expense_form(request.form)
+        if error:
+            return render_template("add.html", categories=CATEGORIES, error=error)
 
         with get_db() as conn:
             conn.execute(
                 "INSERT INTO expenses (description, amount, category, date) VALUES (?, ?, ?, ?)",
-                (description, float(amount), category, date),
+                (data["description"], data["amount"], data["category"], data["date"]),
             )
-            conn.commit()
         return redirect(url_for("index"))
 
     return render_template("add.html", categories=CATEGORIES)
@@ -79,20 +101,15 @@ def edit(expense_id):
         return redirect(url_for("index"))
 
     if request.method == "POST":
-        description = request.form["description"].strip()
-        amount = request.form["amount"]
-        category = request.form["category"]
-        date = request.form["date"]
-
-        if not description or not amount or not category or not date:
-            return render_template("edit.html", expense=expense, categories=CATEGORIES, error="All fields are required.")
+        data, error = validate_expense_form(request.form)
+        if error:
+            return render_template("edit.html", expense=expense, categories=CATEGORIES, error=error)
 
         with get_db() as conn:
             conn.execute(
                 "UPDATE expenses SET description=?, amount=?, category=?, date=? WHERE id=?",
-                (description, float(amount), category, date, expense_id),
+                (data["description"], data["amount"], data["category"], data["date"], expense_id),
             )
-            conn.commit()
         return redirect(url_for("index"))
 
     return render_template("edit.html", expense=expense, categories=CATEGORIES)
@@ -102,10 +119,9 @@ def edit(expense_id):
 def delete(expense_id):
     with get_db() as conn:
         conn.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
-        conn.commit()
     return redirect(url_for("index"))
 
 
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True)
+    app.run(debug=os.getenv("FLASK_DEBUG", "false").lower() == "true")
