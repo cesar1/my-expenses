@@ -20,6 +20,9 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
+# Initialize the database
+python -c "import app; app.init_db()"
+
 # Gunicorn systemd service
 sudo cp deploy/gunicorn.service /etc/systemd/system/gunicorn.service
 sudo systemctl daemon-reload

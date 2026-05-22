@@ -31,4 +31,5 @@ jobs:
             git pull origin main
             source venv/bin/activate
             pip install -r requirements.txt --quiet
+            python -c "import app; app.init_db()"
             sudo systemctl restart gunicorn
