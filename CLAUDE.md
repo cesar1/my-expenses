@@ -20,7 +20,10 @@ Enable debug mode via environment variable (do not hardcode):
 FLASK_DEBUG=true python app.py
 ```
 
-There are no tests or a linter configured for this project.
+```bash
+# Run tests (requires venv)
+python -m pytest tests/ -v
+```
 
 ## CI/CD
 
