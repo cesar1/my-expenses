@@ -22,6 +22,14 @@ FLASK_DEBUG=true python app.py
 
 There are no tests or a linter configured for this project.
 
+## CI/CD
+
+Deployments are automated via GitHub Actions (`.github/workflows/deploy.yml`). Every push to `main` SSHs into the EC2 instance, runs `git pull`, reinstalls dependencies into the venv, and restarts the gunicorn systemd service.
+
+**Required GitHub repo secrets:** `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`
+
+On EC2 the app runs under systemd (`gunicorn.service`) behind nginx (`nginx.conf` proxies port 80 → 127.0.0.1:5000). One-time EC2 bootstrap is in `deploy/setup.sh`. The SQLite database (`expenses.db`) lives on the EBS volume and is never touched by deployments.
+
 ## Architecture
 
 Single-file Flask app (`app.py`) with Jinja2 templates and a SQLite database.
