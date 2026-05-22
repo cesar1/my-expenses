@@ -1,0 +1,15 @@
+[Unit]
+Description=Gunicorn instance for my-expenses
+After=network.target
+
+[Service]
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/home/ec2-user/my-expenses
+Environment="PATH=/home/ec2-user/my-expenses/venv/bin"
+Environment="FLASK_DEBUG=false"
+ExecStart=/home/ec2-user/my-expenses/venv/bin/gunicorn --workers 2 --bind 127.0.0.1:5000 app:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
