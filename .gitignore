@@ -18,3 +18,13 @@ Thumbs.db
 
 # Session notes
 session-summary.md
+
+# Terraform
+infra/.terraform/
+infra/bootstrap/.terraform/
+infra/bootstrap/*.tfstate
+infra/bootstrap/*.tfstate.backup
+infra/bootstrap/.terraform.tfstate.lock.info
+infra/.ssh/
+*.pem
+
