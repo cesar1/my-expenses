@@ -31,6 +31,8 @@ Deployments are automated via GitHub Actions (`.github/workflows/deploy.yml`). E
 
 **Required GitHub repo secrets:** `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`
 
+The Flask `SECRET_KEY` (for login sessions) is **not** a GitHub secret. It is generated once on the EC2 box and stored in `/etc/my-expenses.env` (chmod 600, root-owned), loaded by the gunicorn systemd unit via `EnvironmentFile`. Both `deploy/setup.sh` and the deploy workflow create it only if missing, so it persists across deploys and users stay logged in. Locally, `app.py` falls back to an insecure dev key.
+
 On EC2 the app runs under systemd (`gunicorn.service`) behind nginx (`nginx.conf` proxies port 80 → 127.0.0.1:5000). One-time EC2 bootstrap is in `deploy/setup.sh`. The SQLite database (`expenses.db`) lives on the EBS volume and is never touched by deployments.
 
 ## Architecture

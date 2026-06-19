@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Log In{% endblock %}
+
+{% block content %}
+
+<div style="max-width:420px; margin:0 auto;">
+  <h1 class="page-title mb-1">Welcome back</h1>
+  <p class="page-subtitle mb-4">Log in to your expense tracker.</p>
+
+  {% if error %}
+  <div class="alert alert-danger border-0 mb-4" style="background:var(--accent-lt); color:var(--accent); border-radius:8px;">
+    <i class="bi bi-exclamation-circle me-2"></i>{{ error }}
+  </div>
+  {% endif %}
+
+  <div class="card p-4">
+    <form method="POST" action="{{ url_for('login') }}">
+      <div class="mb-3">
+        <label class="form-label" for="email">Email</label>
+        <input
+          type="email"
+          class="form-control"
+          id="email"
+          name="email"
+          placeholder="you@example.com"
+          value="{{ request.form.email or '' }}"
+          required
+          autofocus
+        />
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label" for="password">Password</label>
+        <input
+          type="password"
+          class="form-control"
+          id="password"
+          name="password"
+          placeholder="••••••••"
+          required
+        />
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100">
+        <i class="bi bi-box-arrow-in-right me-1"></i>Log In
+      </button>
+    </form>
+  </div>
+
+  <p class="page-subtitle text-center mt-3">
+    Don't have an account? <a href="{{ url_for('register') }}" style="color:var(--accent);">Sign up</a>
+  </p>
+</div>
+
+{% endblock %}

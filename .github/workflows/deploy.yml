@@ -32,4 +32,13 @@ jobs:
             source venv/bin/activate
             pip install -r requirements.txt --quiet
             python -c "import app; app.init_db()"
+            # Ensure SECRET_KEY exists (generated once, persists across deploys)
+            if [ ! -f /etc/my-expenses.env ]; then
+              echo "SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(32))')" \
+                | sudo tee /etc/my-expenses.env > /dev/null
+              sudo chmod 600 /etc/my-expenses.env
+            fi
+            # Keep the systemd unit in sync with the repo (picks up EnvironmentFile)
+            sudo cp deploy/gunicorn.service /etc/systemd/system/gunicorn.service
+            sudo systemctl daemon-reload
             sudo systemctl restart gunicorn
