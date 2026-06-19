@@ -160,9 +160,24 @@
       <a class="navbar-brand" href="{{ url_for('index') }}">
         Expense<span>.</span>
       </a>
-      <a class="nav-link nav-link-add" href="{{ url_for('add') }}">
-        <i class="bi bi-plus-lg me-1"></i>Add Expense
-      </a>
+      {% if current_user.is_authenticated %}
+      <div class="d-flex align-items-center gap-3">
+        <span class="page-subtitle d-none d-sm-inline" style="font-size:0.85rem;">{{ current_user.email }}</span>
+        <a class="nav-link nav-link-add" href="{{ url_for('add') }}">
+          <i class="bi bi-plus-lg me-1"></i>Add Expense
+        </a>
+        <form method="POST" action="{{ url_for('logout') }}" style="display:inline;">
+          <button type="submit" class="btn btn-outline-secondary btn-sm" title="Log out">
+            <i class="bi bi-box-arrow-right"></i>
+          </button>
+        </form>
+      </div>
+      {% else %}
+      <div class="d-flex align-items-center gap-2">
+        <a class="nav-link" href="{{ url_for('login') }}" style="color:var(--muted); font-size:0.875rem; font-weight:500;">Log In</a>
+        <a class="nav-link nav-link-add" href="{{ url_for('register') }}">Sign Up</a>
+      </div>
+      {% endif %}
     </div>
   </nav>
 

@@ -20,6 +20,16 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
+# Application secrets — generate SECRET_KEY once. Persists across deploys and is
+# never committed to git. Re-running setup.sh keeps the existing key (so users
+# stay logged in).
+SECRET_ENV_FILE="/etc/my-expenses.env"
+if [ ! -f "$SECRET_ENV_FILE" ]; then
+  echo "SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(32))')" \
+    | sudo tee "$SECRET_ENV_FILE" > /dev/null
+  sudo chmod 600 "$SECRET_ENV_FILE"
+fi
+
 # Initialize the database
 python -c "import app; app.init_db()"
 
