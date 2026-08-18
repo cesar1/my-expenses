@@ -9,6 +9,7 @@
 # Then open: http://127.0.0.1:5000
 
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 from flask import Flask, render_template, request, redirect, url_for
 from flask_login import (
     LoginManager,
@@ -21,6 +22,7 @@ from flask_login import (
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 import os
+import subprocess
 
 app = Flask(__name__)
 # Sessions need a secret key. Set SECRET_KEY in the environment for production;
@@ -29,6 +31,56 @@ app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-only-insecure-secret")
 DB_PATH = os.path.join(os.path.dirname(__file__), "expenses.db")
 
 CATEGORIES = ["Food", "Transport", "Entertainment", "Utilities", "Other"]
+
+VERSION_FILE = os.path.join(os.path.dirname(__file__), "version.txt")
+
+
+def get_build_version():
+    """Identify the running build. Resolved once at startup, not per request.
+
+    Checked in order: APP_VERSION in the environment, then version.txt (written
+    by the deploy workflow right after it pulls, and by deploy/setup.sh on a
+    fresh box), then the local git checkout. Git is deliberately last because
+    gunicorn.service pins PATH to the venv, so git is not on PATH in
+    production -- there the answer always comes from version.txt.
+    """
+    env_version = os.getenv("APP_VERSION", "").strip()
+    if env_version:
+        return env_version
+
+    try:
+        with open(VERSION_FILE, encoding="utf-8") as fh:
+            file_version = fh.read().strip()
+        if file_version:
+            return file_version
+    except OSError:
+        pass
+
+    try:
+        sha = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=os.path.dirname(__file__) or ".",
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=True,
+        ).stdout.strip()
+        if sha:
+            return f"dev-{sha}"
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+    return "dev"
+
+
+app.config["BUILD_VERSION"] = get_build_version()
+
+
+@app.context_processor
+def inject_build_version():
+    """Makes {{ build_version }} available to every template (used in the footer)."""
+    return {"build_version": app.config["BUILD_VERSION"]}
+
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -133,6 +185,23 @@ def validate_registration_form(form):
     return {"email": email, "password": password}, None
 
 
+def safe_next_url(target):
+    r"""Return target only if it is a relative path on this site, else None.
+
+    Guards the ?next= redirect after login against being pointed at another
+    host (open redirect). Backslashes are rejected because some browsers
+    normalize them to slashes, turning "/\evil.com" into "//evil.com".
+    """
+    if not target or "\\" in target:
+        return None
+    parsed = urlparse(target)
+    if parsed.scheme or parsed.netloc:
+        return None
+    if not target.startswith("/") or target.startswith("//"):
+        return None
+    return target
+
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -172,7 +241,7 @@ def login():
             return render_template("login.html", error="Invalid email or password.")
 
         login_user(User(row["id"], row["email"]))
-        next_url = request.args.get("next")
+        next_url = safe_next_url(request.args.get("next"))
         return redirect(next_url or url_for("index"))
 
     return render_template("login.html")

@@ -32,6 +32,9 @@ jobs:
           script: |
             cd ~/my-expenses
             git pull origin main
+            # Stamp the build so the app footer can report what is deployed.
+            # Untracked, so it never conflicts with the next git pull.
+            echo "v${{ github.run_number }} ($(git rev-parse --short HEAD))" > version.txt
             source venv/bin/activate
             pip install -r requirements.txt --quiet
             python -c "import app; app.init_db()"

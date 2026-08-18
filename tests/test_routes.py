@@ -1,3 +1,5 @@
+import app as flask_app
+
 VALID_EXPENSE = {
     "description": "Coffee",
     "amount": "4.50",
@@ -100,3 +102,16 @@ def test_delete(seeded_client):
 def test_delete_nonexistent(client):
     resp = client.post("/delete/999")
     assert resp.status_code == 302
+
+
+# ── Version footer ─────────────────────────────────────────────────────────
+
+
+def test_footer_shows_build_version(client, monkeypatch):
+    monkeypatch.setitem(flask_app.app.config, "BUILD_VERSION", "v42 (abc1234)")
+    assert b"build <code>v42 (abc1234)</code>" in client.get("/").data
+
+
+def test_footer_shows_on_logged_out_pages(anon_client, monkeypatch):
+    monkeypatch.setitem(flask_app.app.config, "BUILD_VERSION", "v42 (abc1234)")
+    assert b"v42 (abc1234)" in anon_client.get("/login").data

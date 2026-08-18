@@ -1,6 +1,9 @@
 # Database
 expenses.db
 
+# Build stamp, written on the box by the deploy workflow / setup.sh
+version.txt
+
 # Python
 __pycache__/
 *.pyc

@@ -33,6 +33,8 @@ Deployments are automated via GitHub Actions (`.github/workflows/deploy.yml`). E
 
 The Flask `SECRET_KEY` (for login sessions) is **not** a GitHub secret. It is generated once on the EC2 box and stored in `/etc/my-expenses.env` (chmod 600, root-owned), loaded by the gunicorn systemd unit via `EnvironmentFile`. Both `deploy/setup.sh` and the deploy workflow create it only if missing, so it persists across deploys and users stay logged in. Locally, `app.py` falls back to an insecure dev key.
 
+The site footer shows a build version, resolved once at startup by `get_build_version()` in `app.py`: `APP_VERSION` env var, then `version.txt`, then the local git SHA (shown as `dev-<sha>`), then `dev`. `version.txt` is untracked and written on the box — by the deploy workflow after `git pull` (`v<run_number> (<short_sha>)`) and by `deploy/setup.sh` on first bootstrap. Git is the last resort because `gunicorn.service` pins `PATH` to the venv, so `git` is not on `PATH` in production.
+
 On EC2 the app runs under systemd (`gunicorn.service`) behind nginx (`nginx.conf` proxies port 80 → 127.0.0.1:5000). One-time EC2 bootstrap is in `deploy/setup.sh`. The SQLite database (`expenses.db`) lives on the EBS volume and is never touched by deployments.
 
 ## Architecture

@@ -1,3 +1,5 @@
+import pytest
+
 from conftest import register_and_login
 
 
@@ -61,6 +63,33 @@ def test_login_wrong_password(anon_client):
         "password": "wrongpassword",
     })
     assert b"Invalid email or password" in resp.data
+
+
+def test_login_honors_relative_next(anon_client):
+    register_and_login(anon_client, email="next1@example.com", password="password123")
+    anon_client.post("/logout")
+    resp = anon_client.post("/login?next=/add", data={
+        "email": "next1@example.com",
+        "password": "password123",
+    })
+    assert resp.headers["Location"] == "/add"
+
+
+@pytest.mark.parametrize("target", [
+    "https://evil.example",
+    "//evil.example",
+    r"/\evil.example",
+    "javascript:alert(1)",
+    "evil.example",
+])
+def test_login_rejects_offsite_next(anon_client, target):
+    register_and_login(anon_client, email="next2@example.com", password="password123")
+    anon_client.post("/logout")
+    resp = anon_client.post("/login", query_string={"next": target}, data={
+        "email": "next2@example.com",
+        "password": "password123",
+    })
+    assert resp.headers["Location"] == "/"
 
 
 def test_logout(client):

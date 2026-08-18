@@ -30,6 +30,9 @@ if [ ! -f "$SECRET_ENV_FILE" ]; then
   sudo chmod 600 "$SECRET_ENV_FILE"
 fi
 
+# Stamp the build so the app footer has a version before the first deploy
+echo "setup ($(git rev-parse --short HEAD))" > version.txt
+
 # Initialize the database
 python -c "import app; app.init_db()"
 
