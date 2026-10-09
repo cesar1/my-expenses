@@ -37,6 +37,17 @@ The site footer shows a build version, resolved once at startup by `get_build_ve
 
 On EC2 the app runs under systemd (`gunicorn.service`) behind nginx (`nginx.conf` proxies port 80 → 127.0.0.1:5000). One-time EC2 bootstrap is in `deploy/setup.sh`. The SQLite database (`expenses.db`) lives on the EBS volume and is never touched by deployments.
 
+## Infrastructure (Terraform)
+
+Terraform (`infra/`) owns the AWS infrastructure the app runs on — it never touches app code or `expenses.db`. Full runbook (credentials, apply order, day-2 ops) is in `infra/README.md`.
+
+- **`infra/bootstrap/`** — one-time module with *local* state that creates the remote state backend: a versioned, encrypted, public-access-blocked S3 bucket and a DynamoDB lock table. Must be applied before the main module, which keeps its state there (`backend.tf`).
+- **`infra/`** (main module) — the EC2 instance (`t3.micro`, latest AL2023 AMI, 30 GB encrypted gp3), an Elastic IP, a security group (port 80 open to the world, port 22 limited to the required `ssh_cidr` var), and an IAM role with `AmazonSSMManagedInstanceCore` for break-glass SSM access. It also *generates* the SSH keypair and writes the private key to `infra/.ssh/expense-tracker.pem`.
+- `terraform output public_ip` and the generated `.pem` are where the `EC2_HOST` and `EC2_SSH_KEY` GitHub secrets come from. Any apply that replaces the instance or EIP means re-pasting them.
+- **`aws_instance.app` carries `lifecycle { ignore_changes = [ami] }`.** AL2023 ships new AMIs frequently; without it, every plan after an AMI release would replace the instance and wipe the SQLite DB. Replace only deliberately — `terraform taint aws_instance.app` — and know it destroys the data.
+- `infra/user_data.sh.tpl` is cloud-init first-boot provisioning that duplicates `deploy/setup.sh`. Change one without the other and newly created instances diverge from the existing one.
+- Not managed by Terraform: app code (deployed by GitHub Actions), `expenses.db` (lives on the EBS volume), TLS/HTTPS, and DNS.
+
 ## Architecture
 
 Single-file Flask app (`app.py`) with Jinja2 templates and a SQLite database.
