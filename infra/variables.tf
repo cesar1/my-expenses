@@ -24,3 +24,15 @@ variable "key_pem_output_path" {
   description = "Local path (relative to infra/) where the generated SSH private key is written."
   default     = "./.ssh/expense-tracker.pem"
 }
+
+variable "snapshot_retention_count" {
+  type        = number
+  description = "How many daily DLM snapshots of the app volume to keep. Snapshots are incremental, so each extra day costs only the changed blocks."
+  default     = 7
+}
+
+variable "snapshot_time_utc" {
+  type        = string
+  description = "UTC start time for the daily snapshot window, HH:MM. DLM starts within an hour of this. Default is 09:00 UTC (02:00 US Pacific)."
+  default     = "09:00"
+}
