@@ -33,7 +33,7 @@ The app runs in Docker on an Ubuntu 26.04 / arm64 box (`i-0e043dd454adfedd5`) at
 
 A systemd drop-in makes `docker.service` require the data-volume mount, so Docker cannot start before the volume is mounted and bind-mount an empty directory (which would make `init_db()` silently create a fresh, empty DB).
 
-`SECRET_KEY` still comes from `/etc/my-expenses.env` (root-owned 0600), loaded by compose via `env_file` — so `docker compose` needs `sudo`. The footer build version comes from the `APP_VERSION` build arg, not `version.txt`.
+`SECRET_KEY` still comes from `/etc/my-expenses.env` (`root:docker` 0640 — the Jenkins deploy stage reads it as uid 1000, and the docker group is already root-equivalent via the socket). The footer build version comes from the `APP_VERSION` build arg, not `version.txt`.
 
 Full as-built record, operating commands, and the outstanding items are in **`deploy/DOCKER-RESTORE.md`** — read it before touching the box.
 
