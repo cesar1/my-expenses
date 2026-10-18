@@ -28,9 +28,66 @@ app = Flask(__name__)
 # Sessions need a secret key. Set SECRET_KEY in the environment for production;
 # the fallback is for local development only (mirrors the FLASK_DEBUG pattern).
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-only-insecure-secret")
-DB_PATH = os.path.join(os.path.dirname(__file__), "expenses.db")
+# Override with DB_PATH in the environment so the container can keep the file on
+# a mounted volume instead of inside the image layer, where it would be lost on
+# every rebuild. Mirrors the SECRET_KEY / FLASK_DEBUG pattern.
+DB_PATH = os.getenv("DB_PATH") or os.path.join(os.path.dirname(__file__), "expenses.db")
 
-CATEGORIES = ["Food", "Transport", "Entertainment", "Utilities", "Other"]
+CATEGORIES = ["Housing", "Food", "Transport", "Entertainment", "Utilities", "Other"]
+
+# Read-only preview shown to logged-out visitors on the landing page. These rows are
+# never written to the database -- the day-of-month is stamped onto a real date at
+# render time so the sample never looks stale.
+#
+# Sources (run scripts/refresh_sample_costs.py to regenerate the BLS figures):
+#   - BLS Consumer Expenditure Survey 2024, annual spending per consumer unit / 12.
+#   - Census ACS 2024 1-year estimates for Rent and Mortgage. The CE survey has its
+#     own rent series, but it averages homeowners paying $0 rent into the mean
+#     ($472/mo), so it is deliberately NOT used here. The Census medians are
+#     conditional on actually renting or owning, which is what we want.
+#   - Both Census figures bundle utilities (gross rent is "rent plus the cost of
+#     utilities"; owner costs include taxes, insurance and utilities), so an
+#     estimated utility allowance is subtracted from each to avoid double-counting
+#     the utility rows below. Those two subtractions are estimates, not survey data.
+#   - Streaming prices are advertised rates. No API publishes them, and the BLS
+#     "streaming and downloading audio" series averages in non-subscribers ($2.92/mo).
+#
+# Electricity and Cell phone are both exactly 113.25. That is a real 2024
+# coincidence, verified against 2022/2023 where the two series differ -- not a
+# copy-paste error.
+SAMPLE_EXPENSES = [
+    {"day": 1,  "description": "Rent",                        "amount": 1237.00, "category": "Housing"},
+    {"day": 1,  "description": "Mortgage, taxes & insurance", "amount": 1640.00, "category": "Housing"},
+    {"day": 3,  "description": "Groceries",                   "amount": 518.67,  "category": "Food"},
+    {"day": 5,  "description": "Electricity",                 "amount": 113.25,  "category": "Utilities"},
+    {"day": 6,  "description": "Internet",                    "amount": 58.17,   "category": "Utilities"},
+    {"day": 7,  "description": "Water & sewer",               "amount": 68.83,   "category": "Utilities"},
+    {"day": 8,  "description": "Natural gas",                 "amount": 33.42,   "category": "Utilities"},
+    {"day": 9,  "description": "Cell phone",                  "amount": 113.25,  "category": "Utilities"},
+    {"day": 11, "description": "Gasoline",                    "amount": 220.42,  "category": "Transport"},
+    {"day": 12, "description": "Car insurance",               "amount": 166.08,  "category": "Transport"},
+    {"day": 14, "description": "Dining out",                  "amount": 328.75,  "category": "Food"},
+    {"day": 15, "description": "Netflix (Standard)",          "amount": 17.99,   "category": "Entertainment"},
+    {"day": 15, "description": "Spotify Premium",             "amount": 11.99,   "category": "Entertainment"},
+]
+
+
+def sample_expenses():
+    """Sample rows for the logged-out landing page, dated in the current month.
+
+    Every "day" above is <= 28 so replace() is safe in February.
+    """
+    today = datetime.now()
+    return [
+        {
+            "description": row["description"],
+            "amount": row["amount"],
+            "category": row["category"],
+            "date": today.replace(day=row["day"]).strftime("%Y-%m-%d"),
+        }
+        for row in SAMPLE_EXPENSES
+    ]
+
 
 VERSION_FILE = os.path.join(os.path.dirname(__file__), "version.txt")
 
@@ -255,8 +312,15 @@ def logout():
 
 
 @app.route("/")
-@login_required
 def index():
+    # Public landing page for logged-out visitors: a read-only preview of what the
+    # app does, using real US household averages. Only "/" is public -- /add, /edit
+    # and /delete stay behind @login_required.
+    if not current_user.is_authenticated:
+        expenses = sample_expenses()
+        total = sum(e["amount"] for e in expenses)
+        return render_template("landing.html", expenses=expenses, total=total)
+
     with get_db() as conn:
         expenses = conn.execute(
             "SELECT * FROM expenses WHERE user_id = ? ORDER BY date DESC, id DESC",
@@ -323,6 +387,19 @@ def delete(expense_id):
             (expense_id, current_user.id),
         )
     return redirect(url_for("index"))
+
+
+@app.route("/healthz")
+def healthz():
+    """Deploy health gate. Unauthenticated and cheap, but it touches SQLite --
+    unlike / and /login, which render without reading the database and so would
+    report healthy even with the data volume unmounted."""
+    try:
+        with get_db() as conn:
+            conn.execute("SELECT 1 FROM users LIMIT 1").fetchone()
+    except Exception as exc:
+        return {"status": "error", "detail": str(exc)}, 503
+    return {"status": "ok", "version": app.config["BUILD_VERSION"]}, 200
 
 
 if __name__ == "__main__":

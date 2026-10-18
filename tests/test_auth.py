@@ -94,20 +94,28 @@ def test_login_rejects_offsite_next(anon_client, target):
 
 def test_logout(client):
     assert client.get("/").status_code == 200
-    client.post("/logout")
-    resp = client.get("/")
+    resp = client.post("/logout")
     assert resp.status_code == 302
     assert "/login" in resp.headers["Location"]
+    # "/" is public now, so it serves the landing page instead of redirecting.
+    landing = client.get("/")
+    assert landing.status_code == 200
+    assert b"Sign Up" in landing.data
 
 
 # ── Protected routes ─────────────────────────────────────────────────────────
 
 
 def test_protected_routes_redirect_when_logged_out(anon_client):
-    for path in ("/", "/add", "/edit/1"):
+    # "/" is deliberately absent: it is the public landing page.
+    for path in ("/add", "/edit/1"):
         resp = anon_client.get(path)
         assert resp.status_code == 302
         assert "/login" in resp.headers["Location"]
+
+
+def test_index_is_public(anon_client):
+    assert anon_client.get("/").status_code == 200
 
 
 # ── Per-user isolation ───────────────────────────────────────────────────────

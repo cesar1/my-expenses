@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Expense Tracker - Track where your money goes{% endblock %}
+
+{% block content %}
+
+<!-- Hero -->
+<div class="text-center mb-5">
+  <h1 class="page-title" style="font-size:2.25rem;">Track where your money goes.</h1>
+  <p class="page-subtitle" style="max-width:34rem; margin:0.5rem auto 1.75rem;">
+    Log every expense, tag it by category, and see your monthly total at a glance.
+    Here is what a typical US household spends.
+  </p>
+  <div class="d-flex gap-2 justify-content-center flex-wrap">
+    <a href="{{ url_for('register') }}" class="btn btn-primary px-4">
+      <i class="bi bi-person-plus me-1"></i>Sign Up Free
+    </a>
+    <a href="{{ url_for('login') }}" class="btn btn-outline-secondary px-4">Log In</a>
+  </div>
+</div>
+
+<!-- Sample total -->
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-3">
+  <h2 class="page-title" style="font-size:1.25rem; margin:0;">Sample month</h2>
+  <div class="card px-4 py-3 text-end" style="min-width:180px;">
+    <div class="page-subtitle" style="font-size:0.78rem;letter-spacing:0.06em;text-transform:uppercase;">Total Spent</div>
+    <div style="font-family:'DM Serif Display',serif; font-size:2rem; letter-spacing:-0.03em; color:var(--accent); line-height:1.1;">
+      ${{ "%.2f"|format(total) }}
+    </div>
+  </div>
+</div>
+
+<!-- Sample expenses table (read-only preview) -->
+<div class="card" style="overflow:hidden;">
+  <table class="table mb-0" style="border-collapse:collapse;">
+    <thead>
+      <tr style="border-bottom:1px solid var(--border); background:var(--bg);">
+        <th style="padding:0.75rem 1.25rem; font-size:0.75rem; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted); width:42%;">Description</th>
+        <th style="padding:0.75rem 1rem; font-size:0.75rem; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted);">Category</th>
+        <th style="padding:0.75rem 1rem; font-size:0.75rem; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted);">Date</th>
+        <th style="padding:0.75rem 1.25rem; font-size:0.75rem; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; color:var(--muted); text-align:right;">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for expense in expenses %}
+      <tr style="border-bottom:1px solid var(--border); transition:background 0.12s;" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+        <td style="padding:0.85rem 1.25rem; font-weight:500;">{{ expense['description'] }}</td>
+        <td style="padding:0.85rem 1rem;">
+          <span class="badge-cat cat-{{ expense['category'] }}">{{ expense['category'] }}</span>
+        </td>
+        <td style="padding:0.85rem 1rem; color:var(--muted); font-size:0.875rem;">{{ expense['date'] }}</td>
+        <td style="padding:0.85rem 1.25rem; text-align:right; font-weight:600; font-variant-numeric:tabular-nums;">
+          ${{ "%.2f"|format(expense['amount']) }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Sourcing footnote -->
+<p class="page-subtitle" style="font-size:0.78rem; line-height:1.6; margin-top:1rem;">
+  Sample data, shown for illustration. It lists both rent and a mortgage, though a
+  household normally pays one or the other, so the total is higher than a real budget.
+  Housing figures are US medians from the
+  <a href="https://www.census.gov/newsroom/press-releases/2025/acs-1-year-estimates.html"
+     style="color:var(--muted); text-decoration:underline;">Census ACS 2024 1-year estimates</a>
+  with utilities backed out; the rest are averages from the
+  <a href="https://www.bls.gov/cex/" style="color:var(--muted); text-decoration:underline;">BLS
+  Consumer Expenditure Survey 2024</a>. Streaming prices are advertised rates.
+</p>
+
+<div class="text-center" style="margin-top:2.5rem;">
+  <a href="{{ url_for('register') }}" class="btn btn-primary px-4">Start tracking your own</a>
+</div>
+
+{% endblock %}

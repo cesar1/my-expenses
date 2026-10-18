@@ -115,3 +115,75 @@ def test_footer_shows_build_version(client, monkeypatch):
 def test_footer_shows_on_logged_out_pages(anon_client, monkeypatch):
     monkeypatch.setitem(flask_app.app.config, "BUILD_VERSION", "v42 (abc1234)")
     assert b"v42 (abc1234)" in anon_client.get("/login").data
+
+
+# ── Landing page (logged out) ──────────────────────────────────────────────
+
+
+def test_landing_shows_sample_expenses(anon_client):
+    resp = anon_client.get("/")
+    assert resp.status_code == 200
+    for text in (b"Rent", b"Mortgage", b"Groceries", b"Netflix", b"Sign Up"):
+        assert text in resp.data
+
+
+def test_landing_samples_are_read_only(anon_client):
+    # No edit/delete controls on the preview -- nothing that dead-ends at /login.
+    resp = anon_client.get("/")
+    assert b"bi-pencil" not in resp.data
+    assert b"bi-trash" not in resp.data
+
+
+def test_landing_samples_not_in_database(anon_client):
+    anon_client.get("/")
+    anon_client.post("/register", data={"email": "fresh@example.com", "password": "password123"})
+    # A brand new user still sees the empty state; no sample leaked into SQLite.
+    assert b"No expenses yet" in anon_client.get("/").data
+
+
+def test_logged_in_user_sees_no_samples(client):
+    assert b"Mortgage" not in client.get("/").data
+
+
+def test_sample_dates_are_current_month(anon_client):
+    from datetime import datetime
+
+    month = datetime.now().strftime("%Y-%m").encode()
+    resp = anon_client.get("/")
+    assert resp.data.count(month) == len(flask_app.SAMPLE_EXPENSES)
+
+
+def test_landing_total_matches_rows(anon_client):
+    expected = sum(row["amount"] for row in flask_app.SAMPLE_EXPENSES)
+    assert f"${expected:.2f}".encode() in anon_client.get("/").data
+
+
+def test_sample_categories_are_all_valid(anon_client):
+    # Guards the CLAUDE.md convention: CATEGORIES is the single source of truth.
+    for row in flask_app.SAMPLE_EXPENSES:
+        assert row["category"] in flask_app.CATEGORIES
+
+
+# ── Housing category ───────────────────────────────────────────────────────
+
+
+def test_housing_category_accepted(client):
+    client.post("/add", data={**VALID_EXPENSE, "description": "Rent", "category": "Housing"})
+    resp = client.get("/")
+    assert b"cat-Housing" in resp.data
+    assert b"Rent" in resp.data
+
+
+def test_healthz_ok(anon_client):
+    resp = anon_client.get("/healthz")
+    assert resp.status_code == 200
+    assert resp.get_json()["status"] == "ok"
+
+
+def test_healthz_reports_error_when_db_unreachable(anon_client, monkeypatch):
+    """The gate must fail when SQLite is unreachable -- that is the whole point
+    of probing /healthz instead of /login during a deploy."""
+    monkeypatch.setattr(flask_app, "DB_PATH", "/nonexistent/dir/expenses.db")
+    resp = anon_client.get("/healthz")
+    assert resp.status_code == 503
+    assert resp.get_json()["status"] == "error"

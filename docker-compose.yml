@@ -1,0 +1,33 @@
+# Deployed by Jenkins (see Jenkinsfile), which runs on this same box and talks
+# to the host docker daemon. IMAGE_TAG is the Jenkins build number, so a
+# rollback is: IMAGE_TAG=b12 docker compose -p my-expenses up -d
+services:
+  app:
+    build:
+      context: .
+      args:
+        APP_VERSION: ${APP_VERSION:-docker}
+    image: my-expenses-app:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    # SECRET_KEY, root-owned 0640 and group-readable by docker -- the same file
+    # and convention the old systemd unit used via EnvironmentFile.
+    env_file:
+      - /etc/my-expenses.env
+    # The SQLite DB must outlive the container. Host path on the dedicated
+    # encrypted EBS volume, not a named volume, so restores and backups stay
+    # plain file operations.
+    volumes:
+      - /mnt/expenses-data:/data
+    expose:
+      - "5000"
+
+  nginx:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.nginx
+    image: my-expenses-nginx:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - app

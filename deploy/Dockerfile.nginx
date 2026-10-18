@@ -1,0 +1,6 @@
+# The reverse proxy config is baked into an image rather than bind-mounted from
+# the build workspace: Jenkins owns that workspace, and a cleanup there would
+# otherwise yank the config out from under a running container on its next
+# restart. Keep deploy/nginx.conf (the host/systemd variant) in sync.
+FROM nginx:alpine
+COPY deploy/nginx.docker.conf /etc/nginx/conf.d/default.conf
