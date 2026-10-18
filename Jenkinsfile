@@ -48,7 +48,7 @@ pipeline {
             -v "$WORKSPACE/tests":/app/tests:ro \
             -w /app \
             my-expenses-app:$IMAGE_TAG \
-            python -m pytest tests/ -q
+            python -m pytest tests/ -q -p no:cacheprovider
         '''
       }
     }
@@ -67,12 +67,10 @@ pipeline {
         sh '''
           for i in $(seq 1 20); do
             body=$(curl -fsS http://host.docker.internal/healthz 2>/dev/null || true)
-            case "$body" in
-              *'"status":"ok"'*|*'"status": "ok"'*)
-                echo "healthy: $body"
-                exit 0
-                ;;
-            esac
+            if echo "$body" | grep -qE '"status": ?"ok"'; then
+              echo "healthy: $body"
+              exit 0
+            fi
             sleep 3
           done
           echo "FAILED: /healthz did not report ok within 60s"
