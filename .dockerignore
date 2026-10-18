@@ -6,7 +6,6 @@ __pycache__
 *.pyc
 .pytest_cache
 infra
-deploy
 scripts
 tests
 expenses.db
@@ -14,3 +13,8 @@ version.txt
 session-summary.md
 .DS_Store
 *.pem
+
+# deploy/ is excluded except the one file the nginx image COPYs from the build
+# context. Without the negation, that build fails on a missing config.
+deploy/*
+!deploy/nginx.docker.conf
