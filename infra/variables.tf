@@ -3,26 +3,28 @@ variable "region" {
   default = "us-west-2"
 }
 
+variable "availability_zone" {
+  type        = string
+  description = "AZ for the instance and the data volume. They must match -- an EBS volume only attaches within its own AZ -- so changing this means moving the data volume via a snapshot first."
+  default     = "us-west-2d"
+}
+
 variable "instance_type" {
-  type    = string
-  default = "t3.micro"
+  type        = string
+  description = "Must be arm64 (Graviton) to match the Ubuntu arm64 AMI lookup in main.tf."
+  default     = "t4g.medium"
+}
+
+variable "key_name" {
+  type        = string
+  description = "Existing EC2 key pair for break-glass SSH. Changing it replaces the instance."
+  default     = "oreo"
 }
 
 variable "ssh_cidr" {
   type        = string
-  description = "CIDR allowed to SSH to the instance. Use your home IP /32 — find it at https://checkip.amazonaws.com."
-}
-
-variable "github_repo_url" {
-  type        = string
-  description = "HTTPS URL of the GitHub repo to clone on first boot. Must be public or accessible without auth."
-  default     = "https://github.com/cesar1/my-expenses.git"
-}
-
-variable "key_pem_output_path" {
-  type        = string
-  description = "Local path (relative to infra/) where the generated SSH private key is written."
-  default     = "./.ssh/expense-tracker.pem"
+  description = "CIDR allowed to SSH to the instance, e.g. your home IP /32 (https://checkip.amazonaws.com). Null (the default) keeps port 22 closed; use SSM instead."
+  default     = null
 }
 
 variable "snapshot_retention_count" {

@@ -145,12 +145,14 @@ alone indefinitely — copy one aside if you want a permanent floor.
    does not need it: Jenkins builds from its own workspace clone and deploys by
    image tag, and only `docker-compose.yml` is read from this directory.
    Converting it to a clone is drift protection, not a fix.
-3. **Terraform is stale.** `infra/` still describes the terminated instance;
-   its state was last written 2026-10-09. A `terraform apply` today would build
-   a second AL2023/systemd instance and move the Elastic IP to it. Either
-   `terraform import` this box or rewrite the module for the Docker setup
-   before running Terraform again. The DLM tag fix above is a second reason the
-   module needs editing.
+3. **Terraform: module rewritten 2026-10-27, not yet applied.** `infra/` now
+   describes this box and imports it (`infra/imports.tf`); the plan is 3
+   imports, 4 in-place changes, 0 adds, 0 destroys. Until it is applied, the
+   state still holds the terminated instance. Applying narrows the SSH rule,
+   currently open to `0.0.0.0/0`, to the operator's /32 from the gitignored
+   `infra/terraform.tfvars` (it was a single /32 in the old state, so it was
+   widened during the rebuild). Still missing: a Docker-era
+   `user_data`, so a replacement instance cannot rebuild itself.
 4. **The root volume is unencrypted and unbacked-up.** That is now mostly fine —
    the DB and the app are elsewhere — except that `/etc/my-expenses.env` lives
    on it. Losing the root volume logs everyone out but destroys no data.

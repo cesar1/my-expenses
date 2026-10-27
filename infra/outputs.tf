@@ -1,18 +1,18 @@
 output "public_ip" {
-  description = "Elastic IP — paste into the EC2_HOST GitHub repo secret"
+  description = "Elastic IP the app is served on"
   value       = aws_eip.app.public_ip
 }
 
 output "instance_id" {
-  value = aws_instance.app.id
+  value = aws_instance.host.id
 }
 
-output "ssh_command" {
-  description = "Quick SSH check after first boot"
-  value       = "ssh -i ${var.key_pem_output_path} ec2-user@${aws_eip.app.public_ip}"
+output "data_volume_id" {
+  description = "EBS volume holding expenses.db"
+  value       = aws_ebs_volume.data.id
 }
 
-output "private_key_path" {
-  description = "Local path to the generated SSH private key — paste its contents into the EC2_SSH_KEY GitHub repo secret"
-  value       = local_sensitive_file.private_key.filename
+output "ssm_shell_command" {
+  description = "Open a shell on the box over SSM"
+  value       = "aws ssm start-session --region ${var.region} --target ${aws_instance.host.id}"
 }

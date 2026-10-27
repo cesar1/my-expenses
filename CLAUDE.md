@@ -66,17 +66,19 @@ The pipeline is `Jenkinsfile` at the repo root: **Build** → **Test** → **Dep
 
 ## Infrastructure (Terraform)
 
-**Stale as of 2026-10-17:** the state in S3 was last written 2026-10-09 and still describes the terminated instance `i-02bd82719d36bb62c`. The current box was created by hand, outside Terraform. A `terraform apply` today would build a *second* AL2023/systemd instance and move the Elastic IP to it. Import or rewrite the module before running Terraform again.
+**Rewritten 2026-10-27 to describe the Docker box; not yet applied.** Until the first apply, the S3 state still holds the terminated instance. `terraform plan` against the rewritten module shows 3 imports, 4 in-place changes (tags, `stop_instance_before_detaching`, and closing SSH, which is open to `0.0.0.0/0` live), and **0 adds, 0 destroys**. Do not apply a plan that differs from that.
 
-Terraform (`infra/`) owns the AWS infrastructure the app runs on — it never touches app code or `expenses.db`. Full runbook (credentials, apply order, day-2 ops) is in `infra/README.md`.
+Terraform (`infra/`) owns the AWS resources the app runs on and never touches what runs on the box (containers, Jenkins, `/etc/*.env`, `expenses.db` contents). Runbook in `infra/README.md`.
 
-- **`infra/bootstrap/`** — one-time module with *local* state that creates the remote state backend: a versioned, encrypted, public-access-blocked S3 bucket and a DynamoDB lock table. Must be applied before the main module, which keeps its state there (`backend.tf`).
-- **`infra/`** (main module) — the EC2 instance (`t3.micro`, latest AL2023 AMI, 30 GB encrypted gp3), an Elastic IP, a security group (port 80 open to the world, port 22 limited to the required `ssh_cidr` var), and an IAM role with `AmazonSSMManagedInstanceCore` for break-glass SSM access. It also *generates* the SSH keypair and writes the private key to `infra/.ssh/expense-tracker.pem`.
-- `terraform output public_ip` and the generated `.pem` are where the `EC2_HOST` and `EC2_SSH_KEY` GitHub secrets come from. Any apply that replaces the instance or EIP means re-pasting them.
-- **`aws_instance.app` carries `lifecycle { ignore_changes = [ami] }`.** AL2023 ships new AMIs frequently; without it, every plan after an AMI release would replace the instance and wipe the SQLite DB. Replace only deliberately — `terraform taint aws_instance.app` — and know it destroys the data.
-- **`aws_dlm_lifecycle_policy.daily_snapshots`** takes daily EBS snapshots of every volume tagged `Project=expense-tracker`, retaining `snapshot_retention_count` (7) of them. It targets the *tag*, not a volume id, so it keeps working across instance replacement — but a volume created outside Terraform is only covered if someone tags it. The current data volume is tagged.
-- `infra/user_data.sh.tpl` is cloud-init first-boot provisioning that duplicates `deploy/setup.sh`. Change one without the other and newly created instances diverge from the existing one.
-- Not managed by Terraform: app code (deployed by GitHub Actions), `expenses.db` (lives on the EBS volume), TLS/HTTPS, and DNS.
+- **Persistent vs disposable.** `aws_ebs_volume.data`, `aws_volume_attachment.data`, `aws_eip.app` and `aws_dlm_lifecycle_policy.daily_snapshots` carry `prevent_destroy`. `aws_instance.host` is disposable in principle — but there is no Docker-era `user_data` yet, so a replacement comes up bare and must be rebuilt by hand per `deploy/DOCKER-RESTORE.md`.
+- **The instance is `aws_instance.host`, not `.app`.** The state already held the dead instance at `.app`, and Terraform will not import into an occupied address. `imports.tf` imports the live box under `.host` and drops `.app` with a `removed` block. `imports.tf` is a no-op after the first apply.
+- **`ignore_changes = [ami, user_data, ebs_block_device]`** on the instance: new Ubuntu AMIs would otherwise replace it, it was built with no user data, and the data volume is attached by a separate resource.
+- **Instance and data volume are pinned to `us-west-2d`** (`var.availability_zone`). EBS volumes only attach within their AZ.
+- **The root volume is unencrypted** (`encrypted = false`) because the hand-built box is; changing it forces a replacement. Nothing on it is data.
+- **SSH is opt-in.** `ssh_cidr` defaults to null, which removes the port 22 rule. The operator's IP is set in `infra/terraform.tfvars`, gitignored because the repo is public; a fresh clone without it plans to close port 22.
+- **DLM** snapshots every volume tagged `Project=expense-tracker` (default_tags puts it on the data volume) and keeps 7. `tags_to_add` must not include `Name` — `copy_tags` already carries it, and the duplicate key broke the policy 2026-10-18 to 10-27.
+- **`infra/bootstrap/`** — one-time module with *local* state that created the S3 state bucket (versioned) and DynamoDB lock table. Already applied.
+- The backend's `dynamodb_table` is deprecated in favour of `use_lockfile`; harmless warning, switching needs `terraform init -reconfigure`.
 
 ## Architecture
 
