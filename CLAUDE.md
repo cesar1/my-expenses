@@ -62,7 +62,7 @@ The pipeline is `Jenkinsfile` at the repo root: **Build** → **Test** → **Dep
 - Images are tagged `my-expenses-app:b<build>`. Only a build that passes the health gate is retagged `:latest`, so a bare `docker compose up -d` always lands on a known-good image. **Rollback:** `IMAGE_TAG=b12 docker compose -p my-expenses up -d`.
 - **A build that fails or is aborted after Deploy rolls itself back** to `:latest` (`post { unsuccessful }`). A failure in Build or Test never touches the running containers. Before the first green build there is no `:latest`, so nothing is rolled back.
 - The health gate polls `/healthz`, which reads SQLite. `/` and `/login` both render without touching the DB and would report healthy even with the data volume unmounted — the exact failure the gate exists to catch.
-- `docker image prune -f` runs in `post { always }`; layers otherwise accumulate on the 30 GB root volume.
+- `post { cleanup }` untags all but the newest 5 `:b<n>` images per repo, then runs `docker image prune -f`; layers otherwise accumulate on the 30 GB root volume. Prune alone frees nothing, because every build's images are tagged. Older builds than the newest 5 are no longer available as rollback targets.
 
 ## Infrastructure (Terraform)
 

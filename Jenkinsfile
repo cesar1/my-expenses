@@ -122,7 +122,26 @@ pipeline {
     cleanup {
       // Image layers accumulate on the 30 GB root volume otherwise. In
       // `cleanup` so it runs after the rollback above.
-      sh 'docker image prune -f || true'
+      //
+      // `prune` alone only removes untagged images, and every build tags its
+      // own as :b<n>, so old builds are untagged here first. The newest
+      // KEEP_IMAGES stay as manual rollback targets. `rmi` without -f only
+      // drops the tag when another tag (e.g. :latest) shares the image, and
+      // refuses outright if a container is using it, so neither the running
+      // release nor :latest can be removed.
+      sh '''
+        KEEP_IMAGES=5
+        for repo in my-expenses-app my-expenses-nginx; do
+          docker image ls "$repo" --format '{{.Tag}}' \
+            | sed -n 's/^b\\([0-9][0-9]*\\)$/\\1/p' \
+            | sort -rn \
+            | tail -n +$((KEEP_IMAGES + 1)) \
+            | while read -r n; do
+                docker rmi "$repo:b$n" || true
+              done
+        done
+        docker image prune -f || true
+      '''
     }
   }
 }
