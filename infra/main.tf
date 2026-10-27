@@ -196,8 +196,10 @@ resource "aws_dlm_lifecycle_policy" "daily_snapshots" {
       # Cost Explorer and easy to find during a restore.
       copy_tags = true
 
+      # No `Name` here: copy_tags already carries the volume's Name, and a
+      # duplicate key fails the whole policy rather than skipping the volume.
+      # That is how the data volume went unsnapshotted 2026-10-18 to 10-26.
       tags_to_add = {
-        Name      = "expense-tracker-dlm-daily"
         CreatedBy = "dlm"
       }
     }

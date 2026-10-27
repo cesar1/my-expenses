@@ -79,7 +79,16 @@ sudo APP_VERSION="v42 (abc1234)" docker compose up -d --build
 
 ## Backups
 
-**Broken as of 2026-10-18 — the data volume has never been snapshotted.**
+**Fixed 2026-10-27 ~06:22 UTC** with the API call below. Before applying it, a
+manual snapshot of the data volume was taken: `snap-0c91e36820c1497e1`. That
+is the first-ever backup of `vol-0e27d54dc4f62f922`. DLM does not manage it,
+so retention will not delete it. The `infra/` module has been corrected to
+match. Still to confirm: the first scheduled DLM snapshot, at the 2026-10-27
+09:00 UTC window, using the verify command below.
+
+The rest of this section is the original incident record.
+
+**Broken 2026-10-18 to 2026-10-27 — the data volume had never been snapshotted.**
 
 DLM policy `policy-0818ead367cbe2df7` is in state `ERROR` with
 `StatusMessage: "Duplicate tag key 'Name' specified."` It last ran successfully
@@ -127,9 +136,9 @@ alone indefinitely — copy one aside if you want a permanent floor.
 
 ## Outstanding
 
-1. **Backups are not running.** See the Backups section above — DLM is in
-   `ERROR` and `vol-0e27d54dc4f62f922` has no snapshots at all. Highest
-   priority item here.
+1. **Confirm backups are running.** The DLM policy was fixed 2026-10-27 (see
+   Backups). Until a scheduled DLM snapshot of `vol-0e27d54dc4f62f922` shows
+   up, the manual `snap-0c91e36820c1497e1` is the only backup.
 2. **`/opt/my-expenses` is not a git clone.** The tree was transferred directly
    because `templates/landing.html` and the Docker files were still uncommitted
    locally. They are pushed now, so this is unblocked — though the pipeline
