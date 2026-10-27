@@ -55,6 +55,9 @@ pipeline {
 
     stage('Deploy') {
       steps {
+        // Set before `up`, not after: a half-finished `up` can leave some
+        // containers already replaced, and that still needs rolling back.
+        script { env.DEPLOYED = 'true' }
         sh 'docker compose up -d'
       }
     }
@@ -94,12 +97,32 @@ pipeline {
   }
 
   post {
-    always {
-      // Image layers accumulate on the 30 GB root volume otherwise.
-      sh 'docker image prune -f || true'
+    // `unsuccessful`, not `failure`: the 20-minute timeout and a manual abort
+    // both end as ABORTED, and either can strike after Deploy has swapped the
+    // containers.
+    unsuccessful {
+      script {
+        if (env.DEPLOYED == 'true') {
+          // :latest is only ever a build that passed the health gate (see
+          // Promote). It is missing only before the first green build, in
+          // which case there is nothing known-good to go back to.
+          sh '''
+            if docker image inspect my-expenses-app:latest my-expenses-nginx:latest >/dev/null 2>&1; then
+              echo "Rolling back to :latest"
+              IMAGE_TAG=latest docker compose up -d --no-build
+            else
+              echo "No :latest images yet -- nothing to roll back to. Leaving $IMAGE_TAG running."
+            fi
+          '''
+        } else {
+          echo 'Failed before Deploy; the running containers were not touched.'
+        }
+      }
     }
-    failure {
-      echo 'Deploy failed. Roll back with: IMAGE_TAG=b<n> docker compose -p my-expenses up -d'
+    cleanup {
+      // Image layers accumulate on the 30 GB root volume otherwise. In
+      // `cleanup` so it runs after the rollback above.
+      sh 'docker image prune -f || true'
     }
   }
 }
