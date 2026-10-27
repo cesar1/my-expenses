@@ -80,8 +80,8 @@ Jenkins). Writing that script is the next piece of work here.
 ## Adoption history
 
 The current box was created outside Terraform on 2026-10-17 and adopted with the
-`import` and `removed` blocks in `imports.tf`. Once an apply has run, that file
-is a no-op and can be deleted.
+`import` and `removed` blocks in `imports.tf`, applied 2026-10-27. That file is
+now a no-op, kept as the record of why the instance address is `.host`.
 
 The previous AL2023 design (generated SSH key, `user_data` cloud-init, GitHub
 Actions deploys) is retired; see git history before October 2026.

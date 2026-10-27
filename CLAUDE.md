@@ -66,12 +66,12 @@ The pipeline is `Jenkinsfile` at the repo root: **Build** → **Test** → **Dep
 
 ## Infrastructure (Terraform)
 
-**Rewritten 2026-10-27 to describe the Docker box; not yet applied.** Until the first apply, the S3 state still holds the terminated instance. `terraform plan` against the rewritten module shows 3 imports, 4 in-place changes (tags, `stop_instance_before_detaching`, and closing SSH, which is open to `0.0.0.0/0` live), and **0 adds, 0 destroys**. Do not apply a plan that differs from that.
+**Rewritten and applied 2026-10-27; state matches the live Docker box.** `terraform plan` should report "No changes". Treat any plan that replaces the instance or touches a `prevent_destroy` resource as a red flag, not a routine change.
 
 Terraform (`infra/`) owns the AWS resources the app runs on and never touches what runs on the box (containers, Jenkins, `/etc/*.env`, `expenses.db` contents). Runbook in `infra/README.md`.
 
 - **Persistent vs disposable.** `aws_ebs_volume.data`, `aws_volume_attachment.data`, `aws_eip.app` and `aws_dlm_lifecycle_policy.daily_snapshots` carry `prevent_destroy`. `aws_instance.host` is disposable in principle — but there is no Docker-era `user_data` yet, so a replacement comes up bare and must be rebuilt by hand per `deploy/DOCKER-RESTORE.md`.
-- **The instance is `aws_instance.host`, not `.app`.** The state already held the dead instance at `.app`, and Terraform will not import into an occupied address. `imports.tf` imports the live box under `.host` and drops `.app` with a `removed` block. `imports.tf` is a no-op after the first apply.
+- **The instance is `aws_instance.host`, not `.app`.** The state already held the dead instance at `.app`, and Terraform will not import into an occupied address. `imports.tf` imports the live box under `.host` and drops `.app` with a `removed` block. `imports.tf` has been applied and is now a no-op; it stays as the record of why the address is `.host`.
 - **`ignore_changes = [ami, user_data, ebs_block_device]`** on the instance: new Ubuntu AMIs would otherwise replace it, it was built with no user data, and the data volume is attached by a separate resource.
 - **Instance and data volume are pinned to `us-west-2d`** (`var.availability_zone`). EBS volumes only attach within their AZ.
 - **The root volume is unencrypted** (`encrypted = false`) because the hand-built box is; changing it forces a replacement. Nothing on it is data.
