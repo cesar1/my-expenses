@@ -120,48 +120,70 @@ def test_footer_shows_on_logged_out_pages(anon_client, monkeypatch):
 # ── Landing page (logged out) ──────────────────────────────────────────────
 
 
-def test_landing_shows_sample_expenses(anon_client):
+def test_landing_shows_streaming_prices(anon_client):
     resp = anon_client.get("/")
     assert resp.status_code == 200
-    for text in (b"Rent", b"Mortgage", b"Groceries", b"Netflix", b"Sign Up"):
-        assert text in resp.data
+    assert b"Sign Up" in resp.data
+    assert b"What video streaming costs" in resp.data
+    assert b"What music streaming costs" in resp.data
+    for service in flask_app.STREAMING_PRICES + flask_app.MUSIC_PRICES:
+        assert service["service"].encode() in resp.data
+        for plan in service["plans"]:
+            assert f"${plan['price']:.2f}".encode() in resp.data
 
 
-def test_landing_samples_are_read_only(anon_client):
-    # No edit/delete controls on the preview -- nothing that dead-ends at /login.
+def test_landing_is_read_only(anon_client):
+    # No edit/delete controls on the price list -- nothing that dead-ends at /login.
     resp = anon_client.get("/")
     assert b"bi-pencil" not in resp.data
     assert b"bi-trash" not in resp.data
 
 
-def test_landing_samples_not_in_database(anon_client):
+def test_landing_prices_not_in_database(anon_client):
     anon_client.get("/")
     anon_client.post("/register", data={"email": "fresh@example.com", "password": "password123"})
-    # A brand new user still sees the empty state; no sample leaked into SQLite.
+    # A brand new user still sees the empty state; no price row leaked into SQLite.
     assert b"No expenses yet" in anon_client.get("/").data
 
 
-def test_logged_in_user_sees_no_samples(client):
-    assert b"Mortgage" not in client.get("/").data
+def test_logged_in_user_sees_no_price_list(client):
+    data = client.get("/").data
+    assert b"What video streaming costs" not in data
+    assert b"What music streaming costs" not in data
 
 
-def test_sample_dates_are_current_month(anon_client):
+def test_cards_show_the_lowest_price_on_each_list():
+    for services in (flask_app.STREAMING_PRICES, flask_app.MUSIC_PRICES):
+        prices = [p["price"] for s in services for p in s["plans"]]
+        assert flask_app.cheapest_plan(services) == min(prices)
+
+
+def test_landing_has_a_plans_start_at_card_per_list(anon_client):
+    assert anon_client.get("/").data.count(b"Plans start at") == 2
+
+
+def test_landing_shows_as_of_date(anon_client):
     from datetime import datetime
 
-    month = datetime.now().strftime("%Y-%m").encode()
-    resp = anon_client.get("/")
-    assert resp.data.count(month) == len(flask_app.SAMPLE_EXPENSES)
+    # Also fails loudly if the constant is not a real YYYY-MM-DD date.
+    as_of = datetime.strptime(flask_app.STREAMING_PRICES_AS_OF, "%Y-%m-%d")
+    expected = f"{as_of.strftime('%B')} {as_of.day}, {as_of.year}"
+    assert expected.encode() in anon_client.get("/").data
 
 
-def test_landing_total_matches_rows(anon_client):
-    expected = sum(row["amount"] for row in flask_app.SAMPLE_EXPENSES)
-    assert f"${expected:.2f}".encode() in anon_client.get("/").data
-
-
-def test_sample_categories_are_all_valid(anon_client):
-    # Guards the CLAUDE.md convention: CATEGORIES is the single source of truth.
-    for row in flask_app.SAMPLE_EXPENSES:
-        assert row["category"] in flask_app.CATEGORIES
+def test_streaming_prices_are_well_formed():
+    # Guards a bad paste from scripts/refresh_streaming_prices.py: an empty list
+    # would crash the cheapest-plan lookup and take the landing page down.
+    everything = flask_app.STREAMING_PRICES + flask_app.MUSIC_PRICES
+    names = [service["service"] for service in everything]
+    assert flask_app.STREAMING_PRICES and flask_app.MUSIC_PRICES
+    assert len(names) == len(set(names))
+    for service in everything:
+        assert service["url"].startswith("https://")
+        assert service["plans"]
+        for plan in service["plans"]:
+            assert plan["name"]
+            assert 0 < plan["price"] < 100
 
 
 # ── Housing category ───────────────────────────────────────────────────────

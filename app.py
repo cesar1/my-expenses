@@ -35,58 +35,84 @@ DB_PATH = os.getenv("DB_PATH") or os.path.join(os.path.dirname(__file__), "expen
 
 CATEGORIES = ["Housing", "Food", "Transport", "Entertainment", "Utilities", "Other"]
 
-# Read-only preview shown to logged-out visitors on the landing page. These rows are
-# never written to the database -- the day-of-month is stamped onto a real date at
-# render time so the sample never looks stale.
+# Read-only price lists (video, then music) shown to logged-out visitors on the
+# landing page. Nothing here is ever written to the database.
 #
-# Sources (run scripts/refresh_sample_costs.py to regenerate the BLS figures):
-#   - BLS Consumer Expenditure Survey 2024, annual spending per consumer unit / 12.
-#   - Census ACS 2024 1-year estimates for Rent and Mortgage. The CE survey has its
-#     own rent series, but it averages homeowners paying $0 rent into the mean
-#     ($472/mo), so it is deliberately NOT used here. The Census medians are
-#     conditional on actually renting or owning, which is what we want.
-#   - Both Census figures bundle utilities (gross rent is "rent plus the cost of
-#     utilities"; owner costs include taxes, insurance and utilities), so an
-#     estimated utility allowance is subtracted from each to avoid double-counting
-#     the utility rows below. Those two subtractions are estimates, not survey data.
-#   - Streaming prices are advertised rates. No API publishes them, and the BLS
-#     "streaming and downloading audio" series averages in non-subscribers ($2.92/mo).
+# These are the advertised US monthly prices, before tax, as published on each
+# provider's own site on STREAMING_PRICES_AS_OF. They are baked in rather than
+# fetched so the landing page has no runtime network dependency.
 #
-# Electricity and Cell phone are both exactly 113.25. That is a real 2024
-# coincidence, verified against 2022/2023 where the two series differ -- not a
-# copy-paste error.
-SAMPLE_EXPENSES = [
-    {"day": 1,  "description": "Rent",                        "amount": 1237.00, "category": "Housing"},
-    {"day": 1,  "description": "Mortgage, taxes & insurance", "amount": 1640.00, "category": "Housing"},
-    {"day": 3,  "description": "Groceries",                   "amount": 518.67,  "category": "Food"},
-    {"day": 5,  "description": "Electricity",                 "amount": 113.25,  "category": "Utilities"},
-    {"day": 6,  "description": "Internet",                    "amount": 58.17,   "category": "Utilities"},
-    {"day": 7,  "description": "Water & sewer",               "amount": 68.83,   "category": "Utilities"},
-    {"day": 8,  "description": "Natural gas",                 "amount": 33.42,   "category": "Utilities"},
-    {"day": 9,  "description": "Cell phone",                  "amount": 113.25,  "category": "Utilities"},
-    {"day": 11, "description": "Gasoline",                    "amount": 220.42,  "category": "Transport"},
-    {"day": 12, "description": "Car insurance",               "amount": 166.08,  "category": "Transport"},
-    {"day": 14, "description": "Dining out",                  "amount": 328.75,  "category": "Food"},
-    {"day": 15, "description": "Netflix (Standard)",          "amount": 17.99,   "category": "Entertainment"},
-    {"day": 15, "description": "Spotify Premium",             "amount": 11.99,   "category": "Entertainment"},
+# To refresh: run scripts/refresh_streaming_prices.py, spot-check its output
+# against the providers' pages, and paste the block it prints over this one. If
+# the script reports a plan it could not read, look that one up by hand -- never
+# guess. Annual plans, bundles, add-ons and student discounts are left out on
+# purpose; "With Amazon Prime" is the full Prime membership, which includes
+# Prime Video. Both lists share the one as-of date, so refresh them together.
+STREAMING_PRICES_AS_OF = "2026-11-11"
+STREAMING_PRICES = [
+    {"service": "Netflix", "url": "https://www.netflix.com/", "plans": [
+        {"name": "Standard with ads", "price": 8.99},
+        {"name": "Standard", "price": 19.99},
+        {"name": "Premium", "price": 26.99},
+    ]},
+    {"service": "Disney+", "url": "https://www.disneyplus.com/", "plans": [
+        {"name": "With ads", "price": 12.49},
+        {"name": "Premium (no ads)", "price": 21.49},
+    ]},
+    {"service": "Hulu", "url": "https://www.hulu.com/", "plans": [
+        {"name": "With ads", "price": 12.49},
+        {"name": "No ads", "price": 21.49},
+    ]},
+    {"service": "HBO Max", "url": "https://www.hbomax.com/", "plans": [
+        {"name": "Basic with ads", "price": 10.99},
+        {"name": "Standard", "price": 18.49},
+        {"name": "Premium", "price": 22.99},
+    ]},
+    {"service": "Prime Video", "url": "https://www.primevideo.com/", "plans": [
+        {"name": "Prime Video only", "price": 8.99},
+        {"name": "With Amazon Prime", "price": 14.99},
+    ]},
+    {"service": "Apple TV", "url": "https://tv.apple.com/", "plans": [
+        {"name": "Monthly", "price": 14.99},
+    ]},
+    {"service": "Peacock", "url": "https://www.peacocktv.com/", "plans": [
+        {"name": "Select", "price": 8.99},
+        {"name": "Premium", "price": 12.99},
+        {"name": "Premium Plus", "price": 19.99},
+    ]},
+    {"service": "Paramount+", "url": "https://www.paramountplus.com/", "plans": [
+        {"name": "Essential", "price": 8.99},
+        {"name": "Premium", "price": 13.99},
+    ]},
+]
+MUSIC_PRICES = [
+    {"service": "Spotify", "url": "https://www.spotify.com/us/premium/", "plans": [
+        {"name": "Premium Individual", "price": 12.99},
+        {"name": "Premium Duo", "price": 18.99},
+        {"name": "Premium Family", "price": 21.99},
+    ]},
+    {"service": "Apple Music", "url": "https://www.apple.com/apple-music/", "plans": [
+        {"name": "Individual", "price": 11.99},
+        {"name": "Family", "price": 19.99},
+    ]},
+    {"service": "Tidal", "url": "https://tidal.com/", "plans": [
+        {"name": "Individual", "price": 11.99},
+        {"name": "Family", "price": 19.99},
+    ]},
+    {"service": "Amazon Music Unlimited", "url": "https://www.amazon.com/music/unlimited", "plans": [
+        {"name": "Individual", "price": 12.99},
+        {"name": "Individual, Prime members", "price": 11.99},
+    ]},
+    {"service": "YouTube Music Premium", "url": "https://music.youtube.com/", "plans": [
+        {"name": "Individual", "price": 11.99},
+        {"name": "Family", "price": 18.99},
+    ]},
 ]
 
 
-def sample_expenses():
-    """Sample rows for the logged-out landing page, dated in the current month.
-
-    Every "day" above is <= 28 so replace() is safe in February.
-    """
-    today = datetime.now()
-    return [
-        {
-            "description": row["description"],
-            "amount": row["amount"],
-            "category": row["category"],
-            "date": today.replace(day=row["day"]).strftime("%Y-%m-%d"),
-        }
-        for row in SAMPLE_EXPENSES
-    ]
+def cheapest_plan(services):
+    """The lowest monthly price on a price list, for its "Plans start at" card."""
+    return min(plan["price"] for s in services for plan in s["plans"])
 
 
 VERSION_FILE = os.path.join(os.path.dirname(__file__), "version.txt")
@@ -313,13 +339,18 @@ def logout():
 
 @app.route("/")
 def index():
-    # Public landing page for logged-out visitors: a read-only preview of what the
-    # app does, using real US household averages. Only "/" is public -- /add, /edit
-    # and /delete stay behind @login_required.
+    # Public landing page for logged-out visitors: read-only lists of what the big
+    # video and music streaming services charge. Only "/" is public -- /add, /edit and
+    # /delete stay behind @login_required.
     if not current_user.is_authenticated:
-        expenses = sample_expenses()
-        total = sum(e["amount"] for e in expenses)
-        return render_template("landing.html", expenses=expenses, total=total)
+        return render_template(
+            "landing.html",
+            services=STREAMING_PRICES,
+            as_of=datetime.strptime(STREAMING_PRICES_AS_OF, "%Y-%m-%d"),
+            video_from=cheapest_plan(STREAMING_PRICES),
+            music_services=MUSIC_PRICES,
+            music_from=cheapest_plan(MUSIC_PRICES),
+        )
 
     with get_db() as conn:
         expenses = conn.execute(
